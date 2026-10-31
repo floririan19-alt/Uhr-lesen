@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uhrenwerkstatt – Uhrzeiten lesen und Zeitspannen berechnen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E9EFEA;
+    --card:#F8FAF6;
+    --face:#FDFCF6;
+    --petrol:#1D4E5E;
+    --petrol-dark:#133846;
+    --brass:#C79A3B;
+    --brass-light:#E3C77F;
+    --coral:#D9573F;
+    --coral-dark:#B1402B;
+    --ink:#1C2A30;
+    --ink-soft:#4E6068;
+    --line:rgba(28,42,48,.14);
+    --good:#2E7D5B;
+    --bad:#AE3A3A;
+    --shadow:0 10px 28px rgba(28,42,48,.13);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 90% 0%, rgba(199,154,59,.14), transparent 40%),
+      radial-gradient(circle at 0% 100%, rgba(29,78,94,.10), transparent 45%),
+      var(--paper);
+    color:var(--ink); font-family:'Nunito',sans-serif; min-height:100vh;
+    padding:26px 16px 60px;
+  }
+  .wrap{max-width:940px;margin:0 auto;}
+
+  header{margin-bottom:26px; text-align:center;}
+  .eyebrow{font-weight:800; font-size:.74rem; letter-spacing:.24em; color:var(--coral-dark); margin-bottom:8px;}
+  h1{
+    font-family:'Fraunces',serif; font-weight:800; font-size:clamp(2rem,6vw,3.2rem);
+    margin:0 0 8px; color:var(--petrol-dark); letter-spacing:-.01em;
+  }
+  .subtitle{color:var(--ink-soft); max-width:560px; margin:0 auto; line-height:1.5;}
+
+  nav{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;}
+  .tabbtn{
+    border:2px solid transparent; background:var(--card); border-radius:14px; padding:13px 10px;
+    cursor:pointer; box-shadow:var(--shadow); font-family:'Nunito',sans-serif; text-align:center;
+    transition:.15s ease;
+  }
+  .tabbtn .t{display:block; font-weight:800; color:var(--ink-soft); font-size:.98rem;}
+  .tabbtn .d{display:block; font-size:.78rem; color:var(--ink-soft); opacity:.85; margin-top:2px;}
+  .tabbtn.active{border-color:var(--petrol); background:#fff;}
+  .tabbtn.active .t{color:var(--petrol-dark);}
+  .tabbtn:hover{transform:translateY(-2px);}
+  button:focus-visible, input:focus-visible, .tabbtn:focus-visible{outline:3px solid var(--brass); outline-offset:2px;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--card); border-radius:20px; padding:24px; box-shadow:var(--shadow);}
+  .card h2{font-family:'Fraunces',serif; margin:0 0 4px; font-size:1.35rem; color:var(--petrol-dark);}
+  .card > p.intro{margin:0 0 16px; color:var(--ink-soft); line-height:1.5;}
+
+  .top{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;}
+  .levels{display:flex; gap:6px; flex-wrap:wrap;}
+  .lvl{
+    border:2px solid transparent; background:#E3EAE5; color:var(--ink-soft); padding:7px 14px;
+    border-radius:20px; font-weight:800; font-size:.82rem; cursor:pointer; font-family:'Nunito',sans-serif;
+  }
+  .lvl.active{background:var(--petrol); color:#fff;}
+  .score{display:flex; align-items:center; gap:12px; font-weight:800; font-size:.86rem; color:var(--ink-soft);}
+  .score b{color:var(--petrol-dark);}
+  .dots{display:flex; gap:4px;}
+  .dot{width:11px; height:11px; border-radius:50%; background:#D3DCD6;}
+  .dot.ok{background:var(--good);}
+  .dot.no{background:var(--bad);}
+
+  .stage{display:grid; grid-template-columns:minmax(240px,340px) 1fr; gap:26px; align-items:center;}
+  @media(max-width:700px){ .stage{grid-template-columns:1fr; } }
+  .clockbox{width:100%; max-width:340px; margin:0 auto;}
+  svg.clock{width:100%; height:auto; display:block; filter:drop-shadow(0 6px 10px rgba(28,42,48,.18));}
+
+  .ctx{font-family:'Fraunces',serif; font-size:1.2rem; color:var(--ink); margin:0 0 12px; line-height:1.35;}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:.82rem; color:var(--ink-soft); margin-bottom:16px; font-weight:700;}
+  .legend span::before{content:''; display:inline-block; vertical-align:middle; margin-right:6px; border-radius:3px;}
+  .legend .h::before{width:18px; height:6px; background:var(--petrol);}
+  .legend .m::before{width:18px; height:4px; background:var(--coral);}
+
+  .timeinput{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;}
+  .field{display:flex; flex-direction:column; gap:4px; font-size:.74rem; font-weight:800; color:var(--ink-soft);}
+  .field input{
+    width:84px; padding:10px 8px; font-family:'DM Mono',monospace; font-size:1.6rem; text-align:center;
+    border:3px solid var(--line); border-radius:12px; background:#fff; color:var(--ink);
+  }
+  .field.h input{border-color:var(--petrol);}
+  .field.m input{border-color:var(--coral);}
+  .sep{font-family:'DM Mono',monospace; font-size:1.6rem; font-weight:500; color:var(--ink-soft); margin-top:18px;}
+  .unit{font-weight:800; color:var(--ink-soft); margin-top:18px;}
+
+  .btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+  button.act{
+    font-family:'Nunito',sans-serif; font-weight:800; border:none; border-radius:12px; padding:11px 20px;
+    font-size:.95rem; cursor:pointer; transition:.15s ease;
+  }
+  button.act:hover{filter:brightness(1.07);}
+  .primary{background:var(--petrol); color:#fff;}
+  .ghost{background:transparent; color:var(--ink-soft); border:2px solid var(--line) !important;}
+  .feedback{min-height:48px; margin-top:12px; font-weight:800; line-height:1.4;}
+  .feedback.ok{color:var(--good);}
+  .feedback.no{color:var(--bad);}
+  .feedback.mid{color:#8C6A12;}
+  .feedback small{display:block; font-weight:600; color:var(--ink-soft); margin-top:3px;}
+
+  .toggle{display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:700; color:var(--ink-soft); margin-top:14px; cursor:pointer;}
+  .toggle input{width:18px; height:18px; accent-color:var(--petrol);}
+
+  /* span panel */
+  .clockpair{display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; margin-bottom:12px;}
+  @media(max-width:560px){ .clockpair{grid-template-columns:1fr 1fr;} .arrowbig{display:none;} }
+  .clockcol{text-align:center;}
+  .clockcol .cap{font-weight:800; color:var(--petrol-dark); margin-top:6px; font-size:.95rem;}
+  .arrowbig{font-size:2rem; color:var(--brass);}
+  .question{font-family:'Fraunces',serif; font-size:1.25rem; text-align:center; margin:6px 0 14px;}
+  .spaninput{display:flex; justify-content:center; align-items:flex-end; gap:10px; flex-wrap:wrap;}
+  .spaninput .field input{border-color:var(--brass);}
+  .spaninput .unit{margin-top:0; margin-bottom:12px;}
+  .spanbtns{justify-content:center;}
+  .spancard-fb{text-align:center;}
+
+  .helper{
+    margin-top:16px; background:#EEF3EF; border-radius:14px; padding:16px 18px; display:none;
+  }
+  .helper h3{margin:0 0 10px; font-family:'Fraunces',serif; font-size:1rem; color:var(--petrol-dark);}
+  .chain{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px;}
+  .chip{font-family:'DM Mono',monospace; font-size:1.05rem; padding:6px 10px; background:#fff; border:2px solid var(--petrol); border-radius:10px; color:var(--petrol-dark);}
+  .jump{font-weight:800; font-size:.85rem; color:var(--coral-dark); background:#FBE6E0; padding:4px 10px; border-radius:20px; position:relative;}
+  .jump::before{content:'→'; margin-right:4px;}
+  .sumline{font-weight:800; color:var(--ink);}
+
+  footer{text-align:center; margin-top:30px; color:var(--ink-soft); font-size:.8rem; opacity:.8;}
+  .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+  @media (prefers-reduced-motion: reduce){ .tabbtn, button.act{transition:none !important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">MATHEMATIK · GRÖSSEN UND MESSEN</div>
+    <h1>Uhrenwerkstatt</h1>
+    <p class="subtitle">Lies Uhrzeiten von der analogen Uhr ab und berechne, wie viel Zeit zwischen zwei Uhrzeiten vergeht.</p>
+  </header>
+
+  <nav>
+    <button class="tabbtn active" data-panel="p1"><span class="t">Uhrzeit ablesen</span><span class="d">Wie spät ist es?</span></button>
+    <button class="tabbtn" data-panel="p2"><span class="t">Zeitspanne berechnen</span><span class="d">Wie lange dauert es?</span></button>
+  </nav>
+
+  <!-- ===== PANEL 1: ABLESEN ===== -->
+  <section class="panel active" id="p1">
+    <div class="card">
+      <h2>Uhrzeit ablesen</h2>
+      <p class="intro">Schau dir beide Zeiger genau an und schreibe die Uhrzeit in der 24-Stunden-Schreibweise auf. Die Tageszeit hilft dir bei der Stunde.</p>
+      <div class="top">
+        <div class="levels" id="lv1" role="group" aria-label="Schwierigkeit">
+          <button class="lvl active" data-lvl="leicht">Leicht · volle &amp; halbe Stunden</button>
+          <button class="lvl" data-lvl="mittel">Mittel · 5-Minuten-Schritte</button>
+          <button class="lvl" data-lvl="schwer">Schwer · jede Minute</button>
+        </div>
+        <div class="score">Richtig: <b id="sc1">0</b> / <b id="tr1">0</b><div class="dots" id="dots1" aria-label="Letzte zehn Aufgaben"></div></div>
+      </div>
+      <div class="stage">
+        <div class="clockbox" id="clock1"></div>
+        <div>
+          <p class="ctx" id="ctx1"></p>
+          <div class="legend"><span class="h">kleiner, dicker Zeiger = Stunden</span><span class="m">langer, dünner Zeiger = Minuten</span></div>
+          <div class="timeinput">
+            <label class="field h">Stunden<input type="number" id="h1" min="0" max="23" inputmode="numeric"></label>
+            <span class="sep">:</span>
+            <label class="field m">Minuten<input type="number" id="m1" min="0" max="59" inputmode="numeric"></label>
+            <span class="unit">Uhr</span>
+          </div>
+          <div class="btnrow">
+            <button class="act primary" id="check1">Prüfen</button>
+            <button class="act ghost" id="skip1">Andere Uhr</button>
+          </div>
+          <label class="toggle"><input type="checkbox" id="mn1" checked> Minutenzahlen an der Uhr anzeigen</label>
+          <div class="feedback" id="fb1" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PANEL 2: ZEITSPANNE ===== -->
+  <section class="panel" id="p2">
+    <div class="card">
+      <h2>Zeitspanne berechnen</h2>
+      <p class="intro">Beide Zeiten liegen am selben Tag. Wie viel Zeit vergeht vom Beginn bis zum Ende?</p>
+      <div class="top">
+        <div class="levels" id="lv2" role="group" aria-label="Schwierigkeit">
+          <button class="lvl active" data-lvl="leicht">Leicht · halbe Stunden</button>
+          <button class="lvl" data-lvl="mittel">Mittel · 5-Minuten-Schritte</button>
+          <button class="lvl" data-lvl="schwer">Schwer · jede Minute</button>
+        </div>
+        <div class="score">Richtig: <b id="sc2">0</b> / <b id="tr2">0</b><div class="dots" id="dots2" aria-label="Letzte zehn Aufgaben"></div></div>
+      </div>
+
+      <div class="clockpair">
+        <div class="clockcol"><div id="clockA"></div><div class="cap" id="capA"></div></div>
+        <div class="arrowbig" aria-hidden="true">➜</div>
+        <div class="clockcol"><div id="clockB"></div><div class="cap" id="capB"></div></div>
+      </div>
+      <div class="question" id="q2"></div>
+      <div class="spaninput">
+        <label class="field">Stunden<input type="number" id="h2" min="0" max="23" inputmode="numeric"></label>
+        <span class="unit">Std</span>
+        <label class="field">Minuten<input type="number" id="m2" min="0" max="999" inputmode="numeric"></label>
+        <span class="unit">Min</span>
+      </div>
+      <div class="btnrow spanbtns">
+        <button class="act primary" id="check2">Prüfen</button>
+        <button class="act ghost" id="help2">Rechenhilfe</button>
+        <button class="act ghost" id="skip2">Neue Aufgabe</button>
+      </div>
+      <div class="feedback spancard-fb" id="fb2" aria-live="polite"></div>
+      <div class="helper" id="helper2"></div>
+      <label class="toggle" style="justify-content:center;"><input type="checkbox" id="mn2" checked> Minutenzahlen an den Uhren anzeigen</label>
+    </div>
+  </section>
+
+  <footer>Uhrenwerkstatt · Üben mit zufälligen Aufgaben · Punkte gelten nur für diese Sitzung</footer>
+</div>
+
+<script>
+/* LOGIC START */
+const pad = n => String(n).padStart(2,'0');
+const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = arr => arr[rnd(0,arr.length-1)];
+
+function pt(r, deg, c=100){
+  const a = deg*Math.PI/180;
+  return [c + r*Math.sin(a), c - r*Math.cos(a)];
+}
+
+function clockSVG(h, m, opts={}){
+  let s = `<svg viewBox="-16 -16 232 232" class="clock" role="img" aria-label="Analoge Uhr">`;
+  s += `<circle cx="100" cy="100" r="97" fill="#000000"/>`;
+  s += `<circle cx="100" cy="100" r="92" fill="none" stroke="#333333" stroke-width="1.5"/>`;
+  s += `<circle cx="100" cy="100" r="88" fill="#FDFCF6"/>`;
+  for(let i=0;i<60;i++){
+    const major = i%5===0;
+    const [x1,y1] = pt(84, i*6), [x2,y2] = pt(major?74:79, i*6);
+    s += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="#1C2A30" stroke-width="${major?2.2:1}" stroke-linecap="round"/>`;
+  }
+  for(let n=1;n<=12;n++){
+    const [x,y] = pt(61, n*30);
+    s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="17" fill="#000000">${n}</text>`;
+  }
+  if(opts.minuteNums){
+    for(let n=1;n<=12;n++){
+      const [x,y] = pt(108, n*30);
+      s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#B1402B">${n*5===60?60:n*5}</text>`;
+    }
+  }
+  const hourAngle = ((h%12) + m/60)*30;
+  const minAngle = m*6;
+  const [hx,hy] = pt(46, hourAngle), [htx,hty] = pt(-9, hourAngle);
+  const [mx,my] = pt(74, minAngle), [mtx,mty] = pt(-14, minAngle);
+  s += `<line x1="${htx.toFixed(2)}" y1="${hty.toFixed(2)}" x2="${hx.toFixed(2)}" y2="${hy.toFixed(2)}" stroke="#1D4E5E" stroke-width="7" stroke-linecap="round"/>`;
+  s += `<line x1="${mtx.toFixed(2)}" y1="${mty.toFixed(2)}" x2="${mx.toFixed(2)}" y2="${my.toFixed(2)}" stroke="#D9573F" stroke-width="3.6" stroke-linecap="round"/>`;
+  s += `<circle cx="100" cy="100" r="6" fill="#000000"/><circle cx="100" cy="100" r="2.2" fill="#133846"/>`;
+  s += `</svg>`;
+  return s;
+}
+
+function daytime(h){
+  if(h<10) return 'morgens';
+  if(h<12) return 'vormittags';
+  if(h<14) return 'mittags';
+  if(h<18) return 'nachmittags';
+  if(h<22) return 'abends';
+  return 'nachts';
+}
+
+function spoken(h, m){
+  const h12 = h%12 || 12, next = (h+1)%12 || 12;
+  const min = k => (k%5===0 ? `${k}` : `${k} Minuten`);
+  if(m===0) return `${h12} Uhr`;
+  if(m===15) return `Viertel nach ${h12}`;
+  if(m===30) return `halb ${next}`;
+  if(m===45) return `Viertel vor ${next}`;
+  if(m<15) return `${min(m)} nach ${h12}`;
+  if(m<30) return m<=25 ? (m===25 ? `5 vor halb ${next}` : `${min(m)} nach ${h12}`) : `${min(30-m)} vor halb ${next}`;
+  if(m<45) return m<=35 ? (m===35 ? `5 nach halb ${next}` : `${min(m-30)} nach halb ${next}`) : `${min(60-m)} vor ${next}`;
+  return `${min(60-m)} vor ${next}`;
+}
+
+function genReadTime(level){
+  const h = rnd(6,23);
+  let m;
+  if(level==='leicht') m = pick([0,30]);
+  else if(level==='mittel') m = 5*rnd(0,11);
+  else m = rnd(0,59);
+  return {h, m};
+}
+
+function genSpan(level){
+  for(;;){
+    const sh = rnd(6,18);
+    let sm, d;
+    if(level==='leicht'){ sm = pick([0,30]); d = 30*rnd(1,8); }
+    else if(level==='mittel'){ sm = 5*rnd(0,11); d = 5*rnd(3,36); }
+    else { sm = rnd(0,59); d = rnd(20,420); }
+    const s = sh*60+sm, e = s+d;
+    if(e <= 23*60+55) return {s, e, d};
+  }
+}
+
+const fmt = t => `${pad(Math.floor(t/60))}:${pad(t%60)}`;
+function fmtSpan(d){
+  const h = Math.floor(d/60), m = d%60;
+  if(h===0) return `${m} Min`;
+  if(m===0) return `${h} Std`;
+  return `${h} Std ${m} Min`;
+}
+
+/* Bridge chain: start -> next full hour -> full hours -> end */
+function spanChain(s, e){
+  const d = e - s;
+  const toFull = (60 - s%60) % 60;
+  const items = [{t:'time', v:fmt(s)}];
+  const parts = [];
+  let cur = s;
+  if(toFull>0 && d >= toFull){
+    items.push({t:'jump', v:`+ ${toFull} Min`});
+    cur += toFull;
+    items.push({t:'time', v:fmt(cur)});
+    parts.push(`${toFull} Min`);
+  }
+  const hours = Math.floor((e-cur)/60);
+  if(hours>0){
+    items.push({t:'jump', v:`+ ${hours} Std`});
+    cur += hours*60;
+    items.push({t:'time', v:fmt(cur)});
+    parts.push(`${hours} Std`);
+  }
+  const rest = e - cur;
+  if(rest>0){
+    items.push({t:'jump', v:`+ ${rest} Min`});
+    cur += rest;
+    items.push({t:'time', v:fmt(cur)});
+    parts.push(`${rest} Min`);
+  }
+  return {items, parts};
+}
+/* LOGIC END */
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.tabbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabbtn').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById(b.dataset.panel).classList.add('active');
+}));
+
+/* ---------- Shared score helpers ---------- */
+function makeStats(scoreId, triesId, dotsId){
+  const st = {score:0, tries:0, hist:[]};
+  st.record = ok => {
+    st.tries++; if(ok) st.score++;
+    st.hist.push(ok); if(st.hist.length>10) st.hist.shift();
+    document.getElementById(scoreId).textContent = st.score;
+    document.getElementById(triesId).textContent = st.tries;
+    document.getElementById(dotsId).innerHTML = st.hist.map(o => `<span class="dot ${o?'ok':'no'}"></span>`).join('');
+  };
+  return st;
+}
+function bindLevels(groupId, onChange){
+  document.getElementById(groupId).addEventListener('click', e => {
+    const b = e.target.closest('.lvl'); if(!b) return;
+    document.querySelectorAll(`#${groupId} .lvl`).forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    onChange(b.dataset.lvl);
+  });
+}
+
+/* ---------- Panel 1: Ablesen ---------- */
+const st1 = makeStats('sc1','tr1','dots1');
+let lvl1 = 'leicht', cur1 = null, answered1 = false;
+
+function draw1(){
+  document.getElementById('clock1').innerHTML = clockSVG(cur1.h, cur1.m, {minuteNums: document.getElementById('mn1').checked});
+}
+function new1(){
+  cur1 = genReadTime(lvl1);
+  answered1 = false;
+  document.getElementById('ctx1').textContent = `Es ist ${daytime(cur1.h)}. Welche Uhrzeit zeigt die Uhr?`;
+  document.getElementById('h1').value = '';
+  document.getElementById('m1').value = '';
+  document.getElementById('fb1').textContent = '';
+  document.getElementById('fb1').className = 'feedback';
+  document.getElementById('check1').textContent = 'Prüfen';
+  draw1();
+  document.getElementById('h1').focus();
+}
+function check1(){
+  if(answered1){ new1(); return; }
+  const hv = document.getElementById('h1').value, mv = document.getElementById('m1').value;
+  const fb = document.getElementById('fb1');
+  if(hv==='' || mv===''){
+    fb.className = 'feedback mid'; fb.textContent = 'Bitte fülle beide Felder aus: Stunden und Minuten.'; return;
+  }
+  const h = parseInt(hv,10), m = parseInt(mv,10);
+  const {h:H, m:M} = cur1;
+  const info = `${pad(H)}:${pad(M)} Uhr (${spoken(H,M)})`;
+  answered1 = true;
+  document.getElementById('check1').textContent = 'Weiter';
+  if(h===H && m===M){
+    st1.record(true);
+    fb.className = 'feedback ok';
+    fb.innerHTML = `Richtig! ${info}`;
+  } else if(m===M && h%12===H%12){
+    st1.record(false);
+    fb.className = 'feedback no';
+    fb.innerHTML = `Fast: Die Minuten stimmen! Achte auf die Tageszeit (${daytime(H)}) und die 24-Stunden-Schreibweise.<small>Richtig ist ${info}.</small>`;
+  } else if(h%12===H%12 && m!==M){
+    st1.record(false);
+    fb.className = 'feedback no';
+    fb.innerHTML = `Die Stunde stimmt. Schau noch einmal auf den langen Zeiger.<small>Richtig ist ${info}.</small>`;
+  } else {
+    st1.record(false);
+    fb.className = 'feedback no';
+    fb.innerHTML = `Leider nicht.<small>Richtig ist ${info}.</small>`;
+  }
+}
+bindLevels('lv1', l => {
+  lvl1 = l;
+  document.getElementById('mn1').checked = (l === 'leicht');
+  new1();
+});
+document.getElementById('mn1').addEventListener('change', draw1);
+document.getElementById('check1').addEventListener('click', check1);
+document.getElementById('skip1').addEventListener('click', new1);
+['h1','m1'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') check1(); }));
+new1();
+
+/* ---------- Panel 2: Zeitspanne ---------- */
+const CONTEXTS = [
+  {a:'Der Film beginnt', b:'Der Film endet', q:'Wie lange dauert der Film?'},
+  {a:'Das Training beginnt', b:'Das Training endet', q:'Wie lange dauert das Training?'},
+  {a:'Der Zug fährt ab', b:'Der Zug kommt an', q:'Wie lange dauert die Zugfahrt?'},
+  {a:'Der Kuchen kommt in den Ofen', b:'Der Kuchen kommt aus dem Ofen', q:'Wie lange backt der Kuchen?'},
+  {a:'Die Wanderung beginnt', b:'Die Wanderung endet', q:'Wie lange dauert die Wanderung?'},
+  {a:'Der Museumsbesuch beginnt', b:'Der Museumsbesuch endet', q:'Wie lange dauert der Museumsbesuch?'},
+  {a:'Die Probe beginnt', b:'Die Probe endet', q:'Wie lange dauert die Probe?'}
+];
+const st2 = makeStats('sc2','tr2','dots2');
+let lvl2 = 'leicht', cur2 = null, answered2 = false;
+
+function draw2(){
+  const mn = document.getElementById('mn2').checked;
+  document.getElementById('clockA').innerHTML = clockSVG(Math.floor(cur2.s/60), cur2.s%60, {minuteNums: mn});
+  document.getElementById('clockB').innerHTML = clockSVG(Math.floor(cur2.e/60), cur2.e%60, {minuteNums: mn});
+}
+function new2(){
+  const sp = genSpan(lvl2);
+  const ctx = pick(CONTEXTS);
+  cur2 = Object.assign({ctx}, sp);
+  answered2 = false;
+  document.getElementById('capA').textContent = ctx.a;
+  document.getElementById('capB').textContent = ctx.b;
+  document.getElementById('q2').textContent = ctx.q;
+  document.getElementById('h2').value = '';
+  document.getElementById('m2').value = '';
+  document.getElementById('fb2').textContent = '';
+  document.getElementById('fb2').className = 'feedback spancard-fb';
+  document.getElementById('helper2').style.display = 'none';
+  document.getElementById('check2').textContent = 'Prüfen';
+  draw2();
+  document.getElementById('h2').focus();
+}
+function showHelper(){
+  const {items, parts} = spanChain(cur2.s, cur2.e);
+  const chain = items.map(i => i.t==='time' ? `<span class="chip">${i.v}</span>` : `<span class="jump">${i.v}</span>`).join('');
+  document.getElementById('helper2').innerHTML =
+    `<h3>So kannst du in Schritten rechnen</h3>
+     <p style="margin:0 0 10px; color:var(--ink-soft); font-size:.9rem;">Gehe von der Anfangszeit zur nächsten vollen Stunde, dann in ganzen Stunden weiter und zuletzt die restlichen Minuten.</p>
+     <div class="chain">${chain}</div>
+     <div class="sumline">${parts.join(' + ')} = ${fmtSpan(cur2.d)}</div>`;
+  document.getElementById('helper2').style.display = 'block';
+}
+function check2(){
+  if(answered2){ new2(); return; }
+  const hv = document.getElementById('h2').value, mv = document.getElementById('m2').value;
+  const fb = document.getElementById('fb2');
+  if(hv==='' && mv===''){
+    fb.className = 'feedback mid spancard-fb'; fb.textContent = 'Bitte trage mindestens Stunden oder Minuten ein.'; return;
+  }
+  const total = (parseInt(hv||'0',10))*60 + parseInt(mv||'0',10);
+  answered2 = true;
+  document.getElementById('check2').textContent = 'Weiter';
+  const right = fmtSpan(cur2.d);
+  if(total === cur2.d){
+    st2.record(true);
+    fb.className = 'feedback ok spancard-fb';
+    const mvNum = parseInt(mv||'0',10);
+    fb.innerHTML = mvNum >= 60
+      ? `Richtig! Schöner geschrieben: ${right}.`
+      : `Richtig! ${fmt(cur2.s)} Uhr bis ${fmt(cur2.e)} Uhr sind ${right}.`;
+  } else {
+    st2.record(false);
+    fb.className = 'feedback no spancard-fb';
+    const diff = total - cur2.d;
+    let hint = '';
+    if(Math.abs(diff)===60) hint = 'Du bist genau eine Stunde daneben.';
+    else if(total%60 === cur2.d%60) hint = 'Die Minuten stimmen, prüfe die Stunden.';
+    else if(Math.floor(total/60) === Math.floor(cur2.d/60)) hint = 'Die Stunden stimmen, prüfe die Minuten.';
+    fb.innerHTML = `Leider nicht.${hint ? ' ' + hint : ''}<small>Richtig sind ${right} (${fmt(cur2.s)} bis ${fmt(cur2.e)} Uhr).</small>`;
+    showHelper();
+  }
+}
+bindLevels('lv2', l => {
+  lvl2 = l;
+  document.getElementById('mn2').checked = (l === 'leicht');
+  new2();
+});
+document.getElementById('mn2').addEventListener('change', draw2);
+document.getElementById('check2').addEventListener('click', check2);
+document.getElementById('skip2').addEventListener('click', new2);
+document.getElementById('help2').addEventListener('click', showHelper);
+['h2','m2'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') check2(); }));
+new2();
+</script>
+</body>
+</html>
